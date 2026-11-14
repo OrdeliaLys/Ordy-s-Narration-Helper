@@ -1,7 +1,8 @@
 /* The list of narration themes.
    Each theme's look lives in styles/themes.css under [data-on-theme="<id>"].
    To add a theme: add a line here, then add a matching block in themes.css.
-   "decoration" switches on something drawn by a script (see vines.js). */
+   "vines" switches on vines drawn by a script (see vines.js): "lush" for
+   healthy green ones, "blight" for dying thorny ones. */
 
 export const THEMES = [
   // Made for Abomination Vaults
@@ -10,7 +11,8 @@ export const THEMES = [
   { id: "emptydeath", label: "Empty Death", group: "Abomination Vaults" },
   { id: "belcorra", label: "Belcorra", group: "Abomination Vaults" },
   { id: "otari", label: "Otari", group: "Abomination Vaults" },
-  { id: "overgrown", label: "Overgrown", group: "Abomination Vaults", decoration: "vines" },
+  { id: "overgrown", label: "Overgrown", group: "Abomination Vaults", vines: "lush" },
+  { id: "blighted", label: "Blighted", group: "Abomination Vaults", vines: "blight" },
 
   // General use
   { id: "classic", label: "Classic", group: "General" },
@@ -28,9 +30,9 @@ export function isTheme(id) {
   return THEMES.some((theme) => theme.id === id);
 }
 
-// Which scripted decoration a theme uses, if any (currently only "vines").
-export function themeDecoration(id) {
-  return THEMES.find((theme) => theme.id === id)?.decoration ?? null;
+// Which kind of vines a theme grows: "lush", "blight", or null for none.
+export function themeVines(id) {
+  return THEMES.find((theme) => theme.id === id)?.vines ?? null;
 }
 
 // For the settings dropdown: { gauntlight: "Abomination Vaults: Gauntlight", ... }

@@ -2,7 +2,7 @@
    players) and knows nothing about Foundry: it only builds and animates HTML. */
 
 import { normalizeOptions } from "./options.js";
-import { themeDecoration } from "./themes.js";
+import { themeVines } from "./themes.js";
 import { growVines } from "./vines.js";
 
 // Timing, in milliseconds. Change these to taste.
@@ -145,15 +145,23 @@ async function playLine(element, item, myRun) {
   const letters = words.flat();
   const revealAll = () => letters.forEach((letter) => letter.classList.add("on"));
 
-  // Some themes draw something extra around the text.
-  if (themeDecoration(options.theme) === "vines") {
+  // Restart the theme's own text animation for this line (some themes change
+  // the text slowly over time, and each line should start fresh).
+  textEl.style.animation = "none";
+  void textEl.offsetWidth;
+  textEl.style.animation = "";
+
+  // Some themes grow vines around the text.
+  const vines = themeVines(options.theme);
+  if (vines) {
     const typingTime =
       effect === "typewriter" ? letters.length * CHAR_MS[options.speed] * 1.3
       : effect === "words" ? words.length * WORD_MS[options.speed] * 1.2
       : 2600;
     growVines(textEl, {
       duration: Math.min(Math.max(typingTime, 3000), 7000),
-      instant: Boolean(local.reduceMotion)
+      instant: Boolean(local.reduceMotion),
+      look: vines
     });
   }
 

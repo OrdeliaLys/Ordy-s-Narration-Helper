@@ -1,4 +1,4 @@
-/* Grows vines over a line of narration (used by the Overgrown theme).
+/* Grows vines over a line of narration (used by the Overgrown and Blighted themes).
 
    How it works: measure where every letter sits on screen, then draw curvy
    lines that climb up beside letters, run across their tops and dip into the
@@ -9,13 +9,41 @@
    curves of each letter: browsers don't provide letter outlines to trace. */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const LEAF_COLOURS = ["#4f8f2f", "#6fae45", "#3d7a2a", "#8fc25a", "#5c9a3a", "#9a8a3c", "#7a6a2e"];
-const LEAF_SHAPE = "M0,0 C3,-5.5 9,-5.5 13,0 C9,5.5 3,5.5 0,0 Z";
+
+// The two kinds of vine. Colours of the stems themselves are in themes.css.
+const LOOKS = {
+  // Healthy green growth.
+  lush: {
+    leafColours: ["#4f8f2f", "#6fae45", "#3d7a2a", "#8fc25a", "#5c9a3a", "#9a8a3c", "#7a6a2e"],
+    leafShape: "M0,0 C3,-5.5 9,-5.5 13,0 C9,5.5 3,5.5 0,0 Z",
+    leafSpacing: 1,     // 1 = normal, bigger = fewer leaves
+    thorns: false,
+    gnarl: 0,           // how crooked the stems are
+    fallShare: 0,       // share of leaves that drop off
+    roots: false,
+    thickness: 1,       // stem width multiplier
+    slowdown: 1         // bigger = grows more slowly
+  },
+  // Dying, thorny growth.
+  blight: {
+    leafColours: ["#3a2a16", "#4a3418", "#2e2418", "#40203a", "#5a1f1f", "#4f4420", "#261a14"],
+    leafShape: "M0,0 C2,-4.5 6,-6 8.5,-3 L13,0 L9.5,1.8 C7,5 2.5,4.5 0,0 Z",
+    leafSpacing: 1.7,
+    thorns: true,
+    gnarl: 0.09,
+    fallShare: 0.5,
+    roots: true,
+    thickness: 1.35,
+    slowdown: 1.35
+  }
+};
 
 // textEl:   the .on-text element holding the letters (.on-ch spans)
 // duration: roughly how long the text takes to appear, so the vines keep pace
 // instant:  true = draw everything fully grown, no animation (reduce motion)
-export async function growVines(textEl, { duration = 3000, instant = false } = {}) {
+// look:     "lush" or "blight"
+export async function growVines(textEl, { duration = 3000, instant = false, look = "lush" } = {}) {
+  const kind = LOOKS[look] ?? LOOKS.lush;
   const letters = [...textEl.querySelectorAll(".on-ch")];
   if (letters.length === 0) return;
 
@@ -38,6 +66,7 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
   const gap = Math.max(parseFloat(style.letterSpacing) || 0, unit * 2);
   const metrics = measureFont(font, size);
   const random = seededRandom(textEl.textContent);
+  duration *= kind.slowdown;
 
   // Where each letter is, relative to the text element.
   const boxes = letters
@@ -60,8 +89,8 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
   }
 
   // Two drawing layers: one behind the letters, one in front.
-  const back = makeLayer("on-vines on-vines-back", instant);
-  const front = makeLayer("on-vines on-vines-front", instant);
+  const back = makeLayer(`on-vines on-vines-back on-vines-${look}`, instant);
+  const front = makeLayer(`on-vines on-vines-front on-vines-${look}`, instant);
   textEl.prepend(back);
   textEl.append(front);
 
@@ -76,13 +105,15 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
     const rowLeft = first.left;
     const rowRight = last.left + last.width;
 
-    // Leaves in front of the text must not sit on top of a letter's body,
-    // or the words get hard to read. This says whether a spot is "on a letter".
+    // Leaves and thorns in front of the text must not sit on top of a
+    // letter's body, or the words get hard to read. This says whether a
+    // spot is "on a letter".
     const onLetter = (x, y) =>
       y > capTop - cap * 0.1 &&
       y < baseline - cap * 0.04 &&
       row.boxes.some((box) => x > box.left + unit && x < box.left + box.width - unit);
     const startDelay = (rowLeft / totalWidth) * duration * 0.3;
+    const shared = { unit, random, cap, kind };
 
     // 1. A creeper running under the whole row.
     const creeper = [{ x: rowLeft - cap * 0.9, y: baseline + cap * 0.55 }];
@@ -90,10 +121,30 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
       creeper.push({ x, y: baseline + cap * (0.16 + random() * 0.16) });
     }
     creeper.push(...curl({ x: rowRight + cap * 0.45, y: baseline + cap * 0.1 }, cap * 0.3, 1));
-    drawVine(front, creeper, {
-      width: 2.6 * unit, unit, random, cap, keepClear: onLetter,
-      delay: startDelay, growTime: Math.max(duration * 0.9, 1800), leafEvery: cap * 0.55
+    const creeperTime = Math.max(duration * 0.9, 1800);
+    drawVine(front, gnarled(creeper, kind.gnarl * cap, random, 10), {
+      ...shared, width: 2.6 * unit, keepClear: onLetter,
+      delay: startDelay, growTime: creeperTime, leafEvery: cap * 0.55
     });
+
+    // 1b. Blighted only: dead roots hanging down from the creeper.
+    if (kind.roots) {
+      for (let x = rowLeft + random() * cap; x < rowRight; x += cap * (1.1 + random() * 1.4)) {
+        const drop = cap * (0.45 + random() * 0.7);
+        const lean = (random() - 0.5) * cap * 0.5;
+        const top = baseline + cap * 0.24;
+        const root = [
+          { x, y: top },
+          { x: x + lean * 0.3, y: top + drop * 0.45 },
+          { x: x + lean, y: top + drop }
+        ];
+        drawVine(back, root, {
+          ...shared, width: 1.3 * unit, keepClear: null, leaves: false, thorns: false,
+          delay: startDelay + ((x - rowLeft) / (rowRight - rowLeft || 1)) * creeperTime + 300,
+          growTime: 1400 + random() * 900, leafEvery: cap
+        });
+      }
+    }
 
     // 2. Climbers: up beside a letter, over the tops, dipping into the gaps.
     let index = Math.floor(random() * 2);
@@ -125,9 +176,9 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
 
       const layer = random() < 0.3 ? back : front;
       drawVine(layer, points, {
-        width: 2 * unit, unit, random, cap, keepClear: layer === front ? onLetter : null,
+        ...shared, width: 2 * unit, keepClear: layer === front ? onLetter : null,
         delay: startDelay + (start.left / totalWidth) * duration * 0.8 + random() * 250,
-        growTime: 1500 + reach * 320, leafEvery: cap * 0.5
+        growTime: (1500 + reach * 320) * kind.slowdown, leafEvery: cap * 0.5
       });
 
       index += reach + 1 + Math.floor(random() * 3);
@@ -141,8 +192,8 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
       weaver.push({ x, y: high ? capTop + cap * 0.22 : baseline - cap * 0.18 });
       high = !high;
     }
-    drawVine(back, weaver, {
-      width: 2.2 * unit, unit, random, cap,
+    drawVine(back, gnarled(weaver, kind.gnarl * cap, random), {
+      ...shared, width: 2.2 * unit, keepClear: null,
       delay: startDelay + 300, growTime: Math.max(duration, 2200), leafEvery: cap * 0.7
     });
   }
@@ -150,11 +201,16 @@ export async function growVines(textEl, { duration = 3000, instant = false } = {
 
 /* ---- Drawing one vine ---- */
 
-function drawVine(layer, points, { width, unit, random, cap, delay, growTime, leafEvery, keepClear = null }) {
+function drawVine(layer, points, settings) {
+  const { width, random, cap, kind, delay, growTime, keepClear } = settings;
+  const withLeaves = settings.leaves ?? true;
+  const withThorns = settings.thorns ?? kind.thorns;
+  const leafEvery = settings.leafEvery * kind.leafSpacing;
+
   const stem = document.createElementNS(SVG_NS, "path");
   stem.setAttribute("class", "on-vine");
   stem.setAttribute("d", smoothPath(points));
-  stem.setAttribute("stroke-width", width.toFixed(2));
+  stem.setAttribute("stroke-width", (width * kind.thickness).toFixed(2));
   layer.append(stem);
 
   // Start with none of the line drawn, then animate it to fully drawn.
@@ -164,36 +220,85 @@ function drawVine(layer, points, { width, unit, random, cap, delay, growTime, le
   stem.style.animationDelay = `${Math.round(delay)}ms`;
   stem.style.animationDuration = `${Math.round(growTime)}ms`;
 
+  // The moment the growing tip reaches a given distance along the stem.
+  const reachedAt = (distance) => Math.round(delay + (distance / length) * growTime);
+  // Position and direction of the stem at a given distance.
+  const spot = (distance) => {
+    const here = stem.getPointAtLength(distance);
+    const ahead = stem.getPointAtLength(Math.min(distance + 1, length));
+    return { x: here.x, y: here.y, heading: Math.atan2(ahead.y - here.y, ahead.x - here.x) };
+  };
+
+  // Thorns: small spikes sticking out sideways, alternating sides.
+  if (withThorns) {
+    let side = 1;
+    for (let at = cap * 0.2; at < length - cap * 0.3; at += cap * (0.2 + random() * 0.16)) {
+      const { x, y, heading } = spot(at);
+      const out = heading + (side * Math.PI) / 2 + (random() - 0.5) * 0.5;
+      const spike = cap * (0.15 + random() * 0.11);
+      const half = cap * 0.045;
+      const tip = { x: x + spike * Math.cos(out), y: y + spike * Math.sin(out) };
+      side = -side;
+      if (keepClear && (keepClear(x, y) || keepClear(tip.x, tip.y))) continue;
+
+      const thorn = document.createElementNS(SVG_NS, "path");
+      thorn.setAttribute("class", "on-thorn");
+      thorn.setAttribute(
+        "d",
+        `M${(x - half * Math.cos(heading)).toFixed(1)},${(y - half * Math.sin(heading)).toFixed(1)} ` +
+          `L${tip.x.toFixed(1)},${tip.y.toFixed(1)} ` +
+          `L${(x + half * Math.cos(heading)).toFixed(1)},${(y + half * Math.sin(heading)).toFixed(1)} Z`
+      );
+      thorn.style.animationDelay = `${reachedAt(at)}ms`;
+      layer.append(thorn);
+    }
+  }
+
   // Leaves along the stem, alternating sides, each appearing as the tip passes.
+  if (!withLeaves) return;
   let side = random() < 0.5 ? 1 : -1;
   for (let at = leafEvery * (0.5 + random() * 0.5); at < length - cap * 0.25; at += leafEvery * (0.7 + random() * 0.6)) {
-    const here = stem.getPointAtLength(at);
-    const ahead = stem.getPointAtLength(Math.min(at + 1, length));
-    const heading = (Math.atan2(ahead.y - here.y, ahead.x - here.x) * 180) / Math.PI;
-    const angle = heading + side * (40 + random() * 35);
-    const leafSize = (cap / 13) * (0.34 + random() * 0.2); // LEAF_SHAPE is 13 units long
+    const { x, y, heading } = spot(at);
+    const angle = (heading * 180) / Math.PI + side * (40 + random() * 35);
+    const leafSize = (cap / 13) * (0.34 + random() * 0.2); // leaf shapes are 13 units long
+    const colour = kind.leafColours[Math.floor(random() * kind.leafColours.length)];
+    const falls = random() < kind.fallShare;
+    const fallAfter = 1200 + random() * 5000;
+    const drift = (random() - 0.5) * cap * 1.6;
+    const spin = (random() < 0.5 ? -1 : 1) * (80 + random() * 160);
     side = -side;
 
     // Skip this leaf if its base or its tip would cover part of a letter.
     if (keepClear) {
       const reach = 13 * leafSize;
-      const tipX = here.x + reach * Math.cos((angle * Math.PI) / 180);
-      const tipY = here.y + reach * Math.sin((angle * Math.PI) / 180);
-      if (keepClear(here.x, here.y) || keepClear(tipX, tipY)) continue;
+      const tipX = x + reach * Math.cos((angle * Math.PI) / 180);
+      const tipY = y + reach * Math.sin((angle * Math.PI) / 180);
+      if (keepClear(x, y) || keepClear(tipX, tipY)) continue;
     }
 
-    const holder = document.createElementNS(SVG_NS, "g");
-    holder.setAttribute(
-      "transform",
-      `translate(${here.x.toFixed(1)} ${here.y.toFixed(1)}) rotate(${angle.toFixed(0)}) scale(${leafSize.toFixed(3)})`
-    );
+    // Three nested groups: where it is / whether it falls / which way it points.
+    const place = document.createElementNS(SVG_NS, "g");
+    place.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    const faller = document.createElementNS(SVG_NS, "g");
+    if (falls) {
+      faller.setAttribute("class", "on-fall");
+      faller.style.setProperty("--fall-x", `${drift.toFixed(0)}px`);
+      faller.style.setProperty("--fall-y", `${(cap * (1.6 + random() * 1.6)).toFixed(0)}px`);
+      faller.style.setProperty("--fall-spin", `${spin.toFixed(0)}deg`);
+      faller.style.animationDelay = `${reachedAt(at) + Math.round(fallAfter)}ms`;
+    }
+    const turn = document.createElementNS(SVG_NS, "g");
+    turn.setAttribute("transform", `rotate(${angle.toFixed(0)}) scale(${leafSize.toFixed(3)})`);
     const leaf = document.createElementNS(SVG_NS, "path");
     leaf.setAttribute("class", "on-leaf");
-    leaf.setAttribute("d", LEAF_SHAPE);
-    leaf.setAttribute("fill", LEAF_COLOURS[Math.floor(random() * LEAF_COLOURS.length)]);
-    leaf.style.animationDelay = `${Math.round(delay + (at / length) * growTime)}ms`;
-    holder.append(leaf);
-    layer.append(holder);
+    leaf.setAttribute("d", kind.leafShape);
+    leaf.setAttribute("fill", colour);
+    leaf.style.animationDelay = `${reachedAt(at)}ms`;
+
+    turn.append(leaf);
+    faller.append(turn);
+    place.append(faller);
+    layer.append(place);
   }
 }
 
@@ -205,6 +310,18 @@ function makeLayer(className, instant) {
 }
 
 /* ---- Geometry helpers ---- */
+
+// Nudge the middle points of a path up and down a little, so the stem looks
+// crooked. amount = 0 leaves it untouched.
+// "tail" is how many points at the end to leave alone (a curl is 10 points).
+function gnarled(points, amount, random, tail = 1) {
+  if (!amount) return points;
+  return points.map((point, index) =>
+    index === 0 || index >= points.length - tail
+      ? point
+      : { x: point.x + (random() - 0.5) * amount, y: point.y + (random() - 0.5) * amount * 2 }
+  );
+}
 
 // A spiral that ends a vine in a curl.
 function curl(from, radius, direction) {
