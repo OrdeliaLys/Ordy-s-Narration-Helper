@@ -2,27 +2,37 @@
    Ordy's Narration Helper
    Shows narration text on every connected player's screen.
 
+   This is the main file. It talks to Foundry (settings, chat, sockets) and
+   hands the actual drawing to display.js and the GM window to panel.js.
+
    How to use (GM only):
-     /narrate The gates groan open.            -> one line
-     /narrate First line. | Second line.       -> several lines, one after another
-     /narrate                                  -> opens a box to type into
-     /narrate-stop                             -> clears the screen right away
+     /narrate                                   -> opens the narration window
+     /narrate The gates groan open.             -> one line, default look
+     /narrate First line. | Second line.        -> several lines, one after another
+     /narrate [gauntlight] The light pulses.    -> one line in a chosen theme
+     /narrate-next                              -> finish typing / go to next line
+     /narrate-stop                              -> clear the screen right away
 
    From a macro:
-     game.modules.get("ordelia-narration").api.narrate("Your text here");
-     game.modules.get("ordelia-narration").api.open();
-     game.modules.get("ordelia-narration").api.stop();
+     const narration = game.modules.get("ordelia-narration").api;
+     narration.toggle();                               // open or close the window
+     narration.narrate("Your text here");
+     narration.narrate("Your text", { theme: "dread", position: "bottom" });
+     narration.next();
+     narration.stop();
    ========================================================================== */
+
+import { THEMES, themeChoices, isTheme } from "./themes.js";
+import { POSITIONS, SIZES, EFFECTS, SPEEDS, FALLBACK, normalizeOptions } from "./options.js";
+import { showNarration, clearNarration, currentLine, finishReveal, advanceLine } from "./display.js";
+import { createPanel } from "./panel.js";
 
 const MODULE_ID = "ordelia-narration";
 
 // Every module gets one socket "channel", always named module.<module id>.
 const SOCKET_NAME = `module.${MODULE_ID}`;
 
-// Timing, in milliseconds. Change these to taste.
-const FADE_MS = 800;        // how long text takes to fade in and out
-const TYPE_MS = 35;         // typewriter: delay between letters
-const EXTRA_MS_PER_CHAR = 30; // long lines stay on screen a little longer
+let panel = null; // the narration window, created the first time it is opened
 
 
 /* --------------------------------------------------------------------------
@@ -36,18 +46,26 @@ Hooks.once("init", () => {
   // An optional hotkey. No key is assigned by default: pick one under
   // Configure Controls if you want it.
   game.keybindings.register(MODULE_ID, "open", {
-    name: "Open narration box",
-    hint: "Opens the box where the GM types narration.",
+    name: "Open or close the narration window",
     editable: [],
     restricted: true, // GM only
     onDown: () => {
-      openDialog();
+      togglePanel();
       return true;
     }
   });
 
   // Make the functions reachable from macros.
-  game.modules.get(MODULE_ID).api = { narrate, open: openDialog, stop };
+  game.modules.get(MODULE_ID).api = {
+    narrate,
+    preview,
+    next,
+    stop,
+    open: openPanel,
+    close: () => panel?.close(),
+    toggle: togglePanel,
+    themes: THEMES.map((theme) => theme.id)
+  };
 });
 
 // "ready" fires once everything has loaded. Start listening for messages
@@ -60,7 +78,7 @@ Hooks.once("ready", () => {
 // "I handled this, don't post it to chat".
 Hooks.on("chatMessage", (chatLog, message) => {
   const text = toPlainText(message);
-  const match = text.match(/^\/narrate(-stop)?(?:\s+([\s\S]+))?$/i);
+  const match = text.match(/^\/narrate(?:-(stop|next))?(?:\s+([\s\S]+))?$/i);
   if (!match) return; // not our command, let Foundry carry on as normal
 
   if (!game.user.isGM) {
@@ -68,13 +86,52 @@ Hooks.on("chatMessage", (chatLog, message) => {
     return false;
   }
 
-  const isStop = Boolean(match[1]);
-  const narration = match[2];
+  const command = match[1]?.toLowerCase();
+  let narration = match[2];
 
-  if (isStop) stop();
-  else if (narration) narrate(narration);
-  else openDialog();
+  if (command === "stop") stop();
+  else if (command === "next") next();
+  else if (narration) {
+    // Optional theme in square brackets at the start: /narrate [dread] text
+    const overrides = {};
+    const themed = narration.match(/^\[([a-z]+)\]\s*([\s\S]*)$/i);
+    if (themed && isTheme(themed[1].toLowerCase())) {
+      overrides.theme = themed[1].toLowerCase();
+      narration = themed[2];
+    }
+    narrate(narration, overrides);
+  } else openPanel();
   return false;
+});
+
+// Adds a feather button to the token tools on the left of the screen.
+// Foundry changed how this list is shaped in version 13, so both shapes are
+// handled, and any surprise is ignored so it can never break the rest.
+Hooks.on("getSceneControlButtons", (controls) => {
+  try {
+    if (!game.user?.isGM) return;
+    const tool = {
+      name: MODULE_ID,
+      title: "Narration window",
+      icon: "fa-solid fa-feather",
+      button: true,
+      visible: true
+    };
+    if (Array.isArray(controls)) {
+      const tokenTools = controls.find((control) => control.name === "token");
+      tokenTools?.tools.push({ ...tool, onClick: () => togglePanel() });
+    } else {
+      const tokenTools = controls.tokens ?? controls.token;
+      if (!tokenTools?.tools) return;
+      tokenTools.tools[MODULE_ID] = {
+        ...tool,
+        order: Object.keys(tokenTools.tools).length,
+        onChange: () => togglePanel()
+      };
+    }
+  } catch (error) {
+    console.warn(`${MODULE_ID} | Could not add the toolbar button.`, error);
+  }
 });
 
 
@@ -83,41 +140,63 @@ Hooks.on("chatMessage", (chatLog, message) => {
    -------------------------------------------------------------------------- */
 
 function registerSettings() {
-  game.settings.register(MODULE_ID, "position", {
-    name: "Text position",
-    hint: "Where on the screen the narration appears.",
+  // ---- World settings: the GM sets these, they apply to everyone ----
+  // These are the DEFAULTS. The narration window can override them per line.
+
+  game.settings.register(MODULE_ID, "theme", {
+    name: "Default theme",
+    hint: "The look used by /narrate and as the starting choice in the narration window.",
     scope: "world",
     config: true,
     type: String,
-    choices: { top: "Top", center: "Center", bottom: "Bottom" },
-    default: "center"
+    choices: themeChoices(),
+    default: FALLBACK.theme
+  });
+
+  game.settings.register(MODULE_ID, "position", {
+    name: "Default text position",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: POSITIONS,
+    default: FALLBACK.position
   });
 
   game.settings.register(MODULE_ID, "textSize", {
-    name: "Text size",
+    name: "Default text size",
     scope: "world",
     config: true,
     type: String,
-    choices: { small: "Small", medium: "Medium", large: "Large" },
-    default: "medium"
+    choices: SIZES,
+    default: FALLBACK.textSize
+  });
+
+  game.settings.register(MODULE_ID, "effect", {
+    name: "Default text effect",
+    hint: "How each line appears: letter by letter, word by word, or all at once.",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: EFFECTS,
+    default: FALLBACK.effect
+  });
+
+  game.settings.register(MODULE_ID, "speed", {
+    name: "Default typing speed",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: SPEEDS,
+    default: FALLBACK.speed
   });
 
   game.settings.register(MODULE_ID, "dim", {
     name: "Darken the screen",
-    hint: "Fades the map and sheets behind the text so it stands out.",
+    hint: "Fades the map and sheets behind the text. Each theme has its own backdrop.",
     scope: "world",
     config: true,
     type: Boolean,
-    default: true
-  });
-
-  game.settings.register(MODULE_ID, "typewriter", {
-    name: "Typewriter effect",
-    hint: "Reveal the text letter by letter. Turn off to fade the whole line in at once.",
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: true
+    default: FALLBACK.dim
   });
 
   game.settings.register(MODULE_ID, "holdSeconds", {
@@ -127,28 +206,77 @@ function registerSettings() {
     config: true,
     type: Number,
     range: { min: 1, max: 15, step: 0.5 },
-    default: 3
+    default: FALLBACK.holdSeconds
+  });
+
+  game.settings.register(MODULE_ID, "manual", {
+    name: "Wait for Next by default",
+    hint: "Each line stays until you press Next (or type /narrate-next) instead of timing out.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: FALLBACK.manual
   });
 
   game.settings.register(MODULE_ID, "postToChat", {
     name: "Also post to chat",
-    hint: "Keeps a copy of each narration in the chat log.",
+    hint: "Keeps a copy of each narration in the chat log. Narration sent to chosen players is whispered to them.",
     scope: "world",
+    config: true,
+    type: Boolean,
+    default: false
+  });
+
+  game.settings.register(MODULE_ID, "narratorName", {
+    name: "Narrator name in chat",
+    hint: "The speaker name used when narration is posted to chat.",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "Narrator"
+  });
+
+  // ---- Client settings: each person sets these for their own screen ----
+
+  game.settings.register(MODULE_ID, "reduceMotion", {
+    name: "Reduce motion (my screen only)",
+    hint: "Shows narration with a simple fade: no typing effect, flicker or drifting.",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false
+  });
+
+  game.settings.register(MODULE_ID, "gmNoDim", {
+    name: "GM: don't darken my screen",
+    hint: "As GM you still see the text, but your map stays fully visible so you can keep working.",
+    scope: "client",
     config: true,
     type: Boolean,
     default: false
   });
 }
 
-// Collect the current settings into one object. The GM's browser sends this
-// along with the text, so every player sees it the same way.
-function readOptions() {
+// The default look, read from the world settings.
+function defaultOptions() {
+  const read = (key) => game.settings.get(MODULE_ID, key);
+  return normalizeOptions({
+    theme: read("theme"),
+    position: read("position"),
+    textSize: read("textSize"),
+    effect: read("effect"),
+    speed: read("speed"),
+    dim: read("dim"),
+    holdSeconds: read("holdSeconds"),
+    manual: read("manual")
+  });
+}
+
+// This browser's own preferences.
+function localPreferences() {
   return {
-    position: game.settings.get(MODULE_ID, "position"),
-    textSize: game.settings.get(MODULE_ID, "textSize"),
-    dim: game.settings.get(MODULE_ID, "dim"),
-    typewriter: game.settings.get(MODULE_ID, "typewriter"),
-    holdSeconds: game.settings.get(MODULE_ID, "holdSeconds")
+    reduceMotion: game.settings.get(MODULE_ID, "reduceMotion"),
+    noDim: game.user.isGM && game.settings.get(MODULE_ID, "gmNoDim")
   };
 }
 
@@ -157,29 +285,59 @@ function readOptions() {
    3. SENDING - what the GM's browser does
    -------------------------------------------------------------------------- */
 
-function narrate(text) {
+// text:      the narration. Line breaks or | split it into separate lines.
+// overrides: any options that should differ from the defaults, e.g. { theme: "dread" }
+// playerIds: user ids to show it to. Leave empty for everyone.
+function narrate(text, overrides = {}, playerIds = []) {
   if (!game.user.isGM) {
     ui.notifications.warn("Only the GM can narrate.");
     return;
   }
-
-  // Split into separate lines on line breaks or the | character.
-  const lines = String(text ?? "")
-    .split(/\n|\|/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const lines = splitLines(text);
   if (lines.length === 0) return;
 
-  const message = { action: "show", lines, options: readOptions(), sender: game.user.id };
+  const options = normalizeOptions({ ...defaultOptions(), ...overrides });
+  const to = Array.isArray(playerIds) && playerIds.length > 0 ? playerIds : null;
+  const batch = newBatchId();
+  const message = { action: "show", lines, options, to, batch, sender: game.user.id };
 
   // The sender does NOT receive its own socket message, so show it here
   // ourselves, then send it to everyone else.
-  showNarration(message);
+  showNarration(lines, options, localPreferences(), batch);
   game.socket.emit(SOCKET_NAME, message);
 
   if (game.settings.get(MODULE_ID, "postToChat")) {
     const content = lines.map((line) => `<p><em>${escapeHtml(line)}</em></p>`).join("");
-    ChatMessage.create({ content, speaker: { alias: "Narrator" } });
+    const alias = game.settings.get(MODULE_ID, "narratorName") || "Narrator";
+    ChatMessage.create({ content, speaker: { alias }, whisper: to ?? [] });
+  }
+}
+
+// Show narration on the GM's own screen only, to try out a look.
+function preview(text, overrides = {}) {
+  if (!game.user.isGM) return;
+  const lines = splitLines(text);
+  if (lines.length === 0) return;
+  clearNarration();
+  const options = normalizeOptions({ ...defaultOptions(), ...overrides });
+  showNarration(lines, options, localPreferences(), newBatchId());
+}
+
+// "Next": if the line on screen is still being typed, finish it at once.
+// If it is already complete, take it away and move on.
+// The message names the exact line, so every browser does the same thing
+// even if one of them is running a little ahead or behind.
+function next() {
+  if (!game.user.isGM) return;
+  const line = currentLine();
+  if (!line) return;
+
+  if (line.phase === "reveal") {
+    finishReveal(line.key);
+    game.socket.emit(SOCKET_NAME, { action: "reveal", key: line.key, sender: game.user.id });
+  } else {
+    advanceLine(line.key);
+    game.socket.emit(SOCKET_NAME, { action: "advance", key: line.key, sender: game.user.id });
   }
 }
 
@@ -189,26 +347,29 @@ function stop() {
   game.socket.emit(SOCKET_NAME, { action: "stop", sender: game.user.id });
 }
 
-async function openDialog() {
+function openPanel() {
   if (!game.user.isGM) return;
-  let text = null;
-  try {
-    text = await foundry.applications.api.DialogV2.prompt({
-      window: { title: "Narration" },
-      content: `
-        <p>Each line is shown on its own, one after another.</p>
-        <textarea name="narration" rows="6" style="width: 100%; resize: vertical;" autofocus></textarea>
-      `,
-      ok: {
-        label: "Narrate",
-        callback: (event, button) => button.form.elements.narration.value
-      },
-      rejectClose: false
-    });
-  } catch (error) {
-    return; // the box was closed without sending
-  }
-  if (text) narrate(text);
+  getPanel().open();
+}
+
+function togglePanel() {
+  if (!game.user.isGM) return;
+  getPanel().toggle();
+}
+
+function getPanel() {
+  panel ??= createPanel({
+    getDefaults: defaultOptions,
+    getPlayers: () =>
+      game.users
+        .filter((user) => user.active && !user.isGM)
+        .map((user) => ({ id: user.id, name: user.name })),
+    onNarrate: narrate,
+    onPreview: preview,
+    onNext: next,
+    onStop: stop
+  });
+  return panel;
 }
 
 
@@ -221,133 +382,32 @@ function handleSocketMessage(message) {
   const sender = game.users.get(message?.sender);
   if (!sender?.isGM) return;
 
-  if (message.action === "show") showNarration(message);
+  if (message.action === "show") {
+    // Narration for chosen players only: skip it if we aren't one of them.
+    if (Array.isArray(message.to) && !message.to.includes(game.user.id)) return;
+    if (!Array.isArray(message.lines)) return;
+    showNarration(message.lines, message.options, localPreferences(), String(message.batch ?? "gm"));
+  } else if (message.action === "reveal") finishReveal(String(message.key));
+  else if (message.action === "advance") advanceLine(String(message.key));
   else if (message.action === "stop") clearNarration();
 }
 
 
 /* --------------------------------------------------------------------------
-   5. DISPLAY - putting the text on screen (runs on every browser)
+   5. SMALL HELPERS
    -------------------------------------------------------------------------- */
 
-const queue = [];     // lines waiting to be shown
-let playing = false;  // is a line on screen right now?
-let runId = 0;        // goes up by one on every stop, so old timers know to quit
-let overlay = null;   // the full-screen element holding the text
-
-function showNarration(message) {
-  for (const line of message.lines) queue.push({ line, options: message.options });
-  if (!playing) playQueue();
+// A short random name for one group of lines, e.g. "m3k9x2a7".
+function newBatchId() {
+  return Math.random().toString(36).slice(2, 10);
 }
 
-function clearNarration() {
-  runId += 1;
-  queue.length = 0;
-  playing = false;
-  overlay?.classList.remove("active");
-}
-
-async function playQueue() {
-  playing = true;
-  const myRun = runId;
-  const element = getOverlay();
-
-  while (queue.length > 0 && myRun === runId) {
-    const { line, options } = queue.shift();
-    await playLine(element, line, options, myRun);
-  }
-
-  // Only tidy up if nobody pressed stop in the meantime.
-  if (myRun === runId) {
-    element.classList.remove("active");
-    playing = false;
-  }
-}
-
-async function playLine(element, line, options, myRun) {
-  const stopped = () => myRun !== runId;
-  const textEl = element.querySelector(".on-text");
-  const shownEl = element.querySelector(".on-shown");
-  const hiddenEl = element.querySelector(".on-hidden");
-
-  // Apply the look the GM chose.
-  element.dataset.position = options.position;
-  element.dataset.size = options.textSize;
-  element.classList.toggle("dim", Boolean(options.dim));
-  element.classList.add("active");
-
-  if (options.typewriter) {
-    // The whole line is in place from the start (so it never jumps around),
-    // but the part not yet "typed" is invisible.
-    const letters = Array.from(line);
-    shownEl.textContent = "";
-    hiddenEl.textContent = line;
-    textEl.classList.add("visible");
-
-    for (let i = 0; i < letters.length; i++) {
-      shownEl.textContent = letters.slice(0, i + 1).join("");
-      hiddenEl.textContent = letters.slice(i + 1).join("");
-      await wait(TYPE_MS * pauseFor(letters[i]));
-      if (stopped()) return;
-    }
-  } else {
-    shownEl.textContent = line;
-    hiddenEl.textContent = "";
-    textEl.classList.add("visible");
-    await wait(FADE_MS);
-    if (stopped()) return;
-  }
-
-  // Leave it up long enough to read.
-  await wait(options.holdSeconds * 1000 + line.length * EXTRA_MS_PER_CHAR);
-  if (stopped()) return;
-
-  // Fade the line out before the next one.
-  textEl.classList.remove("visible");
-  await wait(FADE_MS);
-}
-
-// Build the overlay the first time it's needed, then reuse it.
-function getOverlay() {
-  if (overlay?.isConnected) return overlay;
-
-  overlay = document.createElement("div");
-  overlay.id = "ordelia-narration";
-  overlay.style.setProperty("--on-fade", `${FADE_MS}ms`);
-
-  const text = document.createElement("p");
-  text.className = "on-text";
-
-  const shown = document.createElement("span");
-  shown.className = "on-shown";
-  const hidden = document.createElement("span");
-  hidden.className = "on-hidden";
-
-  text.append(shown, hidden);
-  overlay.append(text);
-  document.body.append(overlay);
-
-  // Reading this forces the browser to draw the hidden state first, so the
-  // very first fade-in animates instead of popping in.
-  void overlay.offsetWidth;
-  return overlay;
-}
-
-
-/* --------------------------------------------------------------------------
-   6. SMALL HELPERS
-   -------------------------------------------------------------------------- */
-
-// Pause for a number of milliseconds.
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Typewriter rhythm: linger after punctuation.
-function pauseFor(letter) {
-  if (/[.!?…]/.test(letter)) return 10;
-  if (/[,;:—–]/.test(letter)) return 5;
-  return 1;
+// Split into separate lines on line breaks or the | character.
+function splitLines(text) {
+  return String(text ?? "")
+    .split(/\n|\|/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 }
 
 // Newer Foundry versions hand chat text over as HTML (<p>like this</p>),

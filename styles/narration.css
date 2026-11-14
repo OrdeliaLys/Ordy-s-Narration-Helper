@@ -1,5 +1,5 @@
-/* Ordy's Narration Helper - how the on-screen text looks.
-   Colours, font and sizes are all safe to change. */
+/* Ordy's Narration Helper - layout of the on-screen text.
+   The colours and fonts of each theme are in themes.css. */
 
 /* The full-screen layer. Invisible until the script adds the "active" class. */
 #ordelia-narration {
@@ -7,12 +7,13 @@
   inset: 0;
   z-index: 10000;            /* above the map, sheets and sidebar */
   pointer-events: none;      /* clicks pass straight through to the game */
+  overflow: hidden;
 
   display: flex;
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
-  padding: 10vh 10vw;
+  padding: 13vh 10vw;
 
   opacity: 0;
   transition: opacity var(--on-fade, 800ms) ease;
@@ -24,12 +25,12 @@
   opacity: 1;
 }
 
-/* "Darken the screen" setting */
+/* "Darken screen": each theme supplies its own backdrop */
 #ordelia-narration.dim {
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.9));
+  background: var(--on-backdrop);
 }
 
-/* "Text position" setting */
+/* Position */
 #ordelia-narration[data-position="top"] {
   align-items: flex-start;
 }
@@ -38,7 +39,7 @@
   align-items: flex-end;
 }
 
-/* "Text size" setting */
+/* Size */
 #ordelia-narration[data-size="small"] {
   --on-font-size: clamp(18px, 2.2vw, 32px);
 }
@@ -47,30 +48,74 @@
   --on-font-size: clamp(30px, 4vw, 60px);
 }
 
-/* The narration text itself */
+/* The narration text itself. The var(--on-...) values come from the theme. */
 #ordelia-narration .on-text {
+  position: relative;
   margin: 0;
   max-width: 28em;
   text-align: center;
-  white-space: pre-wrap;
 
-  font-family: "Amiri", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
-  font-size: var(--on-font-size);
-  font-style: italic;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: #f3ead7;
-  text-shadow: 0 0 6px #000, 0 2px 14px rgba(0, 0, 0, 0.9);
+  font-family: var(--on-font);
+  font-size: calc(var(--on-font-size) * var(--on-scale));
+  font-style: var(--on-style);
+  font-weight: var(--on-weight);
+  font-variant: normal;
+  letter-spacing: var(--on-spacing);
+  text-transform: var(--on-transform);
+  line-height: var(--on-line);
+  color: var(--on-color);
+  text-shadow: var(--on-shadow);
 
   opacity: 0;
-  transition: opacity var(--on-fade, 800ms) ease;
+  transition: opacity 800ms ease;
 }
 
 #ordelia-narration .on-text.visible {
   opacity: 1;
 }
 
-/* Typewriter: letters not yet "typed" take up space but can't be seen. */
-#ordelia-narration .on-hidden {
-  visibility: hidden;
+/* With "Darken screen" off, a soft dark patch behind the text keeps it
+   readable over a bright map. (Parchment brings its own background.) */
+#ordelia-narration:not(.dim):not([data-on-theme="parchment"]) .on-text {
+  padding: 0.5em 1.2em;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0.5em;
+  box-shadow: 0 0 28px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* Each word stays in one piece when the line wraps. */
+#ordelia-narration .on-word {
+  white-space: nowrap;
+}
+
+/* Each letter is invisible until the script adds "on" to it. */
+#ordelia-narration .on-ch {
+  opacity: 0;
+  transition: opacity var(--on-ch-fade) ease-out;
+}
+
+#ordelia-narration .on-ch.on {
+  opacity: 1;
+}
+
+/* "Fade in" effect: letters are already on, only the whole line fades. */
+#ordelia-narration .on-text.instant .on-ch {
+  transition: none;
+}
+
+/* Reduce motion: switch off every theme animation. */
+#ordelia-narration.reduced,
+#ordelia-narration.reduced::before,
+#ordelia-narration.reduced::after,
+#ordelia-narration.reduced .on-text {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ordelia-narration,
+  #ordelia-narration::before,
+  #ordelia-narration::after,
+  #ordelia-narration .on-text {
+    animation: none !important;
+  }
 }

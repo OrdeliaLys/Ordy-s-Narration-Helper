@@ -1,0 +1,341 @@
+/* Ordy's Narration Helper - themes.
+
+   Every theme is a block of variables under [data-on-theme="<id>"]:
+     --on-font       font family           --on-color     text colour
+     --on-style      normal / italic       --on-shadow    glow or shadow on the text
+     --on-weight     400 / 700             --on-glow      one glow colour (used on the picker button)
+     --on-spacing    letter spacing        --on-backdrop  what "Darken screen" paints behind the text
+     --on-transform  none / uppercase      --on-chip      picker button background
+     --on-scale      size multiplier       --on-ch-fade   how softly each typed letter appears
+     --on-line       line height
+
+   The fonts named first (Amiri, Modesto Condensed, Signika) are the ones
+   Foundry provides; the rest are fallbacks. */
+
+/* ---- Defaults (also the Classic theme) ---- */
+[data-on-theme] {
+  --on-font: "Amiri", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --on-style: italic;
+  --on-weight: 400;
+  --on-spacing: 0.02em;
+  --on-transform: none;
+  --on-scale: 1;
+  --on-line: 1.4;
+  --on-color: #f3ead7;
+  --on-shadow: 0 0 6px #000, 0 2px 14px rgba(0, 0, 0, 0.9);
+  --on-glow: transparent;
+  --on-backdrop: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.9));
+  --on-chip: #1d1b18;
+  --on-chip-color: var(--on-color);
+  --on-ch-fade: 80ms;
+}
+
+
+/* ==========================================================================
+   ABOMINATION VAULTS
+   ========================================================================== */
+
+/* Gauntlight - a cold beacon shining down from above */
+[data-on-theme="gauntlight"] {
+  --on-font: "Modesto Condensed", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --on-style: normal;
+  --on-spacing: 0.12em;
+  --on-transform: uppercase;
+  --on-scale: 0.95;
+  --on-color: #e4fffb;
+  --on-glow: #49f0e0;
+  --on-shadow: 0 0 3px #000, 0 0 10px #49f0e0, 0 0 34px #6a4cff;
+  --on-backdrop: radial-gradient(ellipse 80% 70% at 50% 0%, rgba(73, 240, 224, 0.2), rgba(24, 10, 60, 0.88) 60%, rgba(2, 0, 10, 0.96));
+  --on-chip: linear-gradient(#114048, #160a33);
+  --on-ch-fade: 200ms;
+}
+
+#ordelia-narration[data-on-theme="gauntlight"].dim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 50% 60% at 50% 0%, rgba(120, 255, 235, 0.38), transparent 70%);
+  animation: on-beacon 6s ease-in-out infinite;
+}
+
+#ordelia-narration[data-on-theme="gauntlight"] .on-text {
+  animation: on-gauntlight-glow 6s ease-in-out infinite;
+}
+
+@keyframes on-beacon {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes on-gauntlight-glow {
+  0%, 100% { text-shadow: 0 0 3px #000, 0 0 8px #49f0e0, 0 0 26px #6a4cff; }
+  50% { text-shadow: 0 0 3px #000, 0 0 14px #7ffff0, 0 0 44px #8f6bff; }
+}
+
+/* The Vaults - cold carved stone, for room descriptions */
+[data-on-theme="vaults"] {
+  --on-font: "Modesto Condensed", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --on-style: normal;
+  --on-spacing: 0.1em;
+  --on-transform: uppercase;
+  --on-scale: 0.95;
+  --on-color: #c9d1c8;
+  --on-glow: #7f9a8a;
+  --on-shadow: 0 1px 0 #000, 0 -1px 0 rgba(255, 255, 255, 0.2), 0 0 16px rgba(0, 0, 0, 0.95);
+  --on-backdrop: radial-gradient(ellipse at center, rgba(40, 48, 46, 0.72), rgba(8, 10, 10, 0.97) 85%);
+  --on-chip: linear-gradient(#3a423f, #171a19);
+}
+
+/* Empty Death - hollow letters in a void, with pale lights drifting past */
+[data-on-theme="emptydeath"] {
+  --on-style: normal;
+  --on-spacing: 0.22em;
+  --on-transform: uppercase;
+  --on-scale: 0.9;
+  --on-line: 1.6;
+  --on-color: transparent;
+  --on-glow: #b9a6ff;
+  --on-shadow: 0 0 18px rgba(170, 150, 255, 0.4);
+  --on-backdrop: radial-gradient(circle at center, #000 0%, rgba(0, 0, 0, 0.97) 55%, rgba(26, 16, 48, 0.93) 100%);
+  --on-chip: #050409;
+  --on-chip-color: #cfc4ff;
+  --on-ch-fade: 900ms;
+}
+
+#ordelia-narration[data-on-theme="emptydeath"] .on-text {
+  -webkit-text-stroke: 1px rgba(218, 208, 255, 0.9);
+  animation: on-hollow 7s ease-in-out infinite;
+}
+
+#ordelia-narration[data-on-theme="emptydeath"].dim::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(circle 70px at 18% 32%, rgba(190, 170, 255, 0.2), transparent),
+    radial-gradient(circle 50px at 78% 24%, rgba(160, 220, 255, 0.16), transparent),
+    radial-gradient(circle 90px at 64% 80%, rgba(190, 170, 255, 0.14), transparent);
+  animation: on-wisps 16s ease-in-out infinite alternate;
+}
+
+@keyframes on-hollow {
+  0%, 100% { text-shadow: 0 0 14px rgba(170, 150, 255, 0.25); }
+  50% { text-shadow: 0 0 26px rgba(190, 170, 255, 0.6); }
+}
+
+@keyframes on-wisps {
+  from { transform: translate(-3%, 2%); }
+  to { transform: translate(4%, -3%); }
+}
+
+/* Belcorra - blood red, for the ghost and her threats */
+[data-on-theme="belcorra"] {
+  --on-weight: 700;
+  --on-spacing: 0.03em;
+  --on-color: #f6e0e0;
+  --on-glow: #d1002a;
+  --on-shadow: 0 0 3px #000, 0 0 12px #b3001b, 0 3px 24px rgba(179, 0, 27, 0.65);
+  --on-backdrop: radial-gradient(ellipse at center, rgba(74, 0, 14, 0.62), rgba(12, 0, 3, 0.96) 80%);
+  --on-chip: linear-gradient(#4a000e, #120003);
+}
+
+#ordelia-narration[data-on-theme="belcorra"] .on-text::before,
+#ordelia-narration[data-on-theme="belcorra"] .on-text::after {
+  content: "";
+  display: block;
+  width: min(60%, 12em);
+  height: 1px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, transparent, #e0002d, transparent);
+  box-shadow: 0 0 8px #d1002a;
+}
+
+#ordelia-narration[data-on-theme="belcorra"] .on-text::before {
+  margin-bottom: 0.6em;
+}
+
+#ordelia-narration[data-on-theme="belcorra"] .on-text::after {
+  margin-top: 0.6em;
+}
+
+/* Otari - warm lantern light, for scenes in town */
+[data-on-theme="otari"] {
+  --on-style: normal;
+  --on-color: #fff3dc;
+  --on-glow: #ffb65c;
+  --on-shadow: 0 0 4px #000, 0 2px 12px rgba(0, 0, 0, 0.8), 0 0 28px rgba(255, 170, 70, 0.4);
+  --on-backdrop: linear-gradient(to bottom, rgba(18, 30, 52, 0.84), rgba(64, 44, 40, 0.76) 60%, rgba(120, 66, 24, 0.74));
+  --on-chip: linear-gradient(#1a2a44, #6e4320);
+}
+
+
+/* ==========================================================================
+   GENERAL
+   ========================================================================== */
+
+/* Classic uses the defaults at the top of this file. */
+
+/* Parchment - dark ink on a scroll */
+[data-on-theme="parchment"] {
+  --on-style: normal;
+  --on-color: #2e1f0f;
+  --on-shadow: none;
+  --on-backdrop: rgba(0, 0, 0, 0.5);
+  --on-chip: linear-gradient(135deg, #ead9ad, #c9ad72);
+}
+
+#ordelia-narration[data-on-theme="parchment"] .on-text {
+  padding: 1.1em 1.6em;
+  background: linear-gradient(135deg, #ead9ad, #d9c188 60%, #c9ad72);
+  border: 1px solid #7a5a2a;
+  border-radius: 3px;
+  box-shadow: inset 0 0 40px rgba(110, 70, 20, 0.45), 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* Cinematic - black bars and clean subtitles */
+[data-on-theme="cinematic"] {
+  --on-font: "Signika", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --on-style: normal;
+  --on-spacing: 0.04em;
+  --on-scale: 0.8;
+  --on-color: #ffffff;
+  --on-shadow: 0 0 4px #000, 0 2px 6px rgba(0, 0, 0, 0.9);
+  --on-backdrop: rgba(0, 0, 0, 0.3);
+  --on-chip: linear-gradient(#000 22%, #3a3a3a 22%, #3a3a3a 78%, #000 78%);
+}
+
+#ordelia-narration[data-on-theme="cinematic"].dim::before,
+#ordelia-narration[data-on-theme="cinematic"].dim::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11vh;
+  background: #000;
+}
+
+#ordelia-narration[data-on-theme="cinematic"].dim::before {
+  top: 0;
+}
+
+#ordelia-narration[data-on-theme="cinematic"].dim::after {
+  bottom: 0;
+}
+
+/* Dread - unsteady, flickering text */
+[data-on-theme="dread"] {
+  --on-style: normal;
+  --on-spacing: 0.14em;
+  --on-color: #e6e0d4;
+  --on-glow: #c2001f;
+  --on-shadow: 0 0 3px #000, 2px 0 0 rgba(255, 0, 40, 0.5), -2px 0 0 rgba(0, 180, 255, 0.28), 0 0 18px rgba(0, 0, 0, 0.9);
+  --on-backdrop: radial-gradient(ellipse at center, rgba(22, 0, 0, 0.55), rgba(0, 0, 0, 0.97) 75%);
+  --on-chip: #0b0000;
+}
+
+#ordelia-narration[data-on-theme="dread"] .on-text {
+  animation: on-jitter 0.22s steps(2) infinite, on-flicker 5s linear infinite;
+}
+
+@keyframes on-jitter {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(0.6px, -0.6px); }
+  100% { transform: translate(-0.6px, 0.4px); }
+}
+
+@keyframes on-flicker {
+  0%, 41%, 44%, 71%, 73%, 100% { filter: none; }
+  42%, 43% { filter: brightness(0.35); }
+  72% { filter: brightness(0.55); }
+}
+
+/* Arcane - violet magic */
+[data-on-theme="arcane"] {
+  --on-font: "Modesto Condensed", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --on-style: normal;
+  --on-spacing: 0.1em;
+  --on-transform: uppercase;
+  --on-scale: 0.95;
+  --on-color: #ece4ff;
+  --on-glow: #9a78ff;
+  --on-shadow: 0 0 3px #000, 0 0 9px #9a78ff, 0 0 28px #5a3cff;
+  --on-backdrop: radial-gradient(ellipse at center, rgba(52, 28, 120, 0.6), rgba(8, 4, 28, 0.95) 80%);
+  --on-chip: linear-gradient(#34207a, #0c0626);
+  --on-ch-fade: 250ms;
+}
+
+#ordelia-narration[data-on-theme="arcane"] .on-text {
+  animation: on-arcane 4s ease-in-out infinite;
+}
+
+@keyframes on-arcane {
+  0%, 100% { text-shadow: 0 0 3px #000, 0 0 8px #9a78ff, 0 0 24px #5a3cff; }
+  50% { text-shadow: 0 0 3px #000, 0 0 14px #c3adff, 0 0 40px #7a5cff; }
+}
+
+/* Divine - radiant gold */
+[data-on-theme="divine"] {
+  --on-style: normal;
+  --on-spacing: 0.12em;
+  --on-transform: uppercase;
+  --on-scale: 0.9;
+  --on-color: #fff8de;
+  --on-glow: #ffd257;
+  --on-shadow: 0 0 2px #2e1c00, 0 1px 5px rgba(46, 28, 0, 0.95), 0 0 14px #ffc93d, 0 0 38px rgba(255, 190, 60, 0.75);
+  --on-backdrop: radial-gradient(ellipse at center, rgba(190, 140, 40, 0.5), rgba(84, 54, 6, 0.84) 50%, rgba(20, 12, 0, 0.96));
+  --on-chip: linear-gradient(#a8791c, #3a2603);
+}
+
+/* Wild - forests and fey */
+[data-on-theme="wild"] {
+  --on-color: #e6f6d2;
+  --on-glow: #7fd858;
+  --on-shadow: 0 0 4px #000, 0 0 12px rgba(110, 210, 80, 0.75), 0 2px 20px rgba(0, 0, 0, 0.8);
+  --on-backdrop: radial-gradient(ellipse at center, rgba(22, 62, 30, 0.62), rgba(4, 18, 8, 0.95) 80%);
+  --on-chip: linear-gradient(#1c4a24, #06180a);
+  --on-ch-fade: 250ms;
+}
+
+/* Infernal - embers and fire */
+[data-on-theme="infernal"] {
+  --on-font: "Modesto Condensed", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --on-style: normal;
+  --on-weight: 700;
+  --on-spacing: 0.08em;
+  --on-transform: uppercase;
+  --on-color: #ffe0ad;
+  --on-glow: #ff6a14;
+  --on-shadow: 0 0 3px #000, 0 0 8px #ff7a18, 0 -3px 22px #ff2a00;
+  --on-backdrop: linear-gradient(to top, rgba(130, 22, 0, 0.78), rgba(30, 4, 0, 0.9) 55%, rgba(0, 0, 0, 0.94));
+  --on-chip: linear-gradient(to top, #8a1a00, #140300);
+}
+
+#ordelia-narration[data-on-theme="infernal"] .on-text {
+  animation: on-embers 1.6s ease-in-out infinite;
+}
+
+@keyframes on-embers {
+  0%, 100% { text-shadow: 0 0 3px #000, 0 0 8px #ff7a18, 0 -3px 22px #ff2a00; }
+  35% { text-shadow: 0 0 3px #000, 0 0 12px #ffa040, 0 -5px 30px #ff4a00; }
+  70% { text-shadow: 0 0 3px #000, 0 0 6px #ff6a10, 0 -2px 18px #e02000; }
+}
+
+/* Dream - soft, drifting, hazy */
+[data-on-theme="dream"] {
+  --on-spacing: 0.06em;
+  --on-color: #f8ecff;
+  --on-glow: #ff9fe0;
+  --on-shadow: 0 0 3px rgba(20, 0, 40, 0.95), 0 1px 6px rgba(20, 0, 40, 0.9), 0 0 14px rgba(255, 150, 225, 0.75), 0 0 34px rgba(130, 190, 255, 0.6);
+  --on-backdrop: radial-gradient(ellipse at 30% 30%, rgba(150, 90, 190, 0.62), rgba(56, 48, 130, 0.82) 50%, rgba(14, 8, 40, 0.95));
+  --on-chip: linear-gradient(135deg, #7a4a9a, #2a2a70);
+  --on-ch-fade: 700ms;
+}
+
+#ordelia-narration[data-on-theme="dream"] .on-text {
+  animation: on-drift 7s ease-in-out infinite;
+}
+
+@keyframes on-drift {
+  0%, 100% { transform: translateY(-5px); }
+  50% { transform: translateY(5px); }
+}

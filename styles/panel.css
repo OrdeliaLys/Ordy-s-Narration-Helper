@@ -1,0 +1,307 @@
+/* Ordy's Narration Helper - the GM's narration window.
+
+   "all: unset" on the controls wipes whatever styling Foundry (or another
+   module) would apply to buttons and text boxes, so the window looks the
+   same in every Foundry version. */
+
+#ordelia-narration-panel {
+  position: fixed;
+  z-index: 10001;             /* above the narration, so Stop and Next stay usable */
+  width: 380px;
+  max-width: 96vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  background: #17161a;
+  color: #e8e4dc;
+  border: 1px solid #4a4652;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+  font-family: "Signika", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.3;
+  color-scheme: dark;
+}
+
+#ordelia-narration-panel[hidden] {
+  display: none;
+}
+
+#ordelia-narration-panel *,
+#ordelia-narration-panel *::before,
+#ordelia-narration-panel *::after {
+  box-sizing: border-box;
+}
+
+/* Wipe inherited styling from every control, then restyle below. */
+#ordelia-narration-panel button,
+#ordelia-narration-panel textarea {
+  all: unset;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+#ordelia-narration-panel button::before,
+#ordelia-narration-panel button::after {
+  content: none;
+}
+
+/* Title bar */
+#ordelia-narration-panel .onp-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 6px 12px;
+  background: #24222a;
+  border-bottom: 1px solid #4a4652;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+
+#ordelia-narration-panel .onp-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 24px;
+  color: #b8b2c4;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-close:hover {
+  background: #3a3644;
+  color: #fff;
+}
+
+#ordelia-narration-panel .onp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 12px 10px;
+  overflow-y: auto;
+}
+
+/* Text box */
+#ordelia-narration-panel .onp-text {
+  display: block;
+  width: 100%;
+  min-height: 62px;
+  padding: 7px 8px;
+  background: #0e0d10;
+  color: #f0ece4;
+  border: 1px solid #4a4652;
+  border-radius: 5px;
+  resize: vertical;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  cursor: text;
+}
+
+#ordelia-narration-panel .onp-text:focus {
+  border-color: #9a86d8;
+}
+
+#ordelia-narration-panel .onp-text::placeholder {
+  color: #7d788a;
+}
+
+/* Small headings */
+#ordelia-narration-panel .onp-label {
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9a94a8;
+}
+
+/* Theme picker */
+#ordelia-narration-panel .onp-themes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#ordelia-narration-panel .onp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+#ordelia-narration-panel .onp-chip {
+  display: block;
+  padding: 5px 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+
+  /* These come from the theme, so each button previews its look. */
+  background: var(--on-chip);
+  color: var(--on-chip-color);
+  font-family: var(--on-font);
+  font-style: var(--on-style);
+  font-size: 14px;
+  text-shadow: 0 0 6px var(--on-glow);
+}
+
+#ordelia-narration-panel .onp-chip:hover {
+  border-color: #6f6880;
+}
+
+#ordelia-narration-panel .onp-chip.on {
+  border-color: #f0ece4;
+}
+
+/* Option rows */
+#ordelia-narration-panel .onp-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+#ordelia-narration-panel .onp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#ordelia-narration-panel .onp-row-label {
+  flex: 0 0 58px;
+  color: #b8b2c4;
+}
+
+#ordelia-narration-panel .onp-seg-group {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+#ordelia-narration-panel .onp-audience {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#ordelia-narration-panel .onp-seg,
+#ordelia-narration-panel .onp-toggle {
+  flex: 1;
+  padding: 4px 8px;
+  text-align: center;
+  white-space: nowrap;
+  background: #26242c;
+  color: #cfc9d8;
+  border: 1px solid #45414e;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-audience .onp-seg {
+  flex: 0 1 auto;
+}
+
+#ordelia-narration-panel .onp-seg:hover,
+#ordelia-narration-panel .onp-toggle:hover {
+  border-color: #7d7690;
+}
+
+#ordelia-narration-panel .onp-seg.on,
+#ordelia-narration-panel .onp-toggle.on {
+  background: #5b4a9c;
+  border-color: #9a86d8;
+  color: #fff;
+}
+
+/* "stays 3s" stepper */
+#ordelia-narration-panel .onp-hold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+#ordelia-narration-panel .onp-hold-value {
+  min-width: 62px;
+  text-align: center;
+  color: #cfc9d8;
+}
+
+#ordelia-narration-panel .onp-step {
+  width: 22px;
+  height: 22px;
+  text-align: center;
+  line-height: 20px;
+  background: #26242c;
+  color: #cfc9d8;
+  border: 1px solid #45414e;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Action buttons */
+#ordelia-narration-panel .onp-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+#ordelia-narration-panel .onp-primary,
+#ordelia-narration-panel .onp-action {
+  flex: 1;
+  padding: 7px 6px;
+  text-align: center;
+  border-radius: 5px;
+  border: 1px solid #45414e;
+  background: #26242c;
+  color: #e8e4dc;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-primary {
+  flex: 1.6;
+  background: #6a55b8;
+  border-color: #9a86d8;
+  color: #fff;
+  font-weight: 600;
+}
+
+#ordelia-narration-panel .onp-primary:hover {
+  background: #7b66cc;
+}
+
+#ordelia-narration-panel .onp-action:hover {
+  border-color: #7d7690;
+}
+
+#ordelia-narration-panel .onp-stop:hover {
+  background: #6e1f2a;
+  border-color: #b8455a;
+}
+
+#ordelia-narration-panel button:focus-visible {
+  outline: 2px solid #c3b6f2;
+  outline-offset: 1px;
+}
+
+#ordelia-narration-panel .onp-status {
+  min-height: 16px;
+  font-size: 12px;
+  color: #9a94a8;
+}

@@ -1,6 +1,6 @@
 # Ordy's Narration Helper
 
-A small FoundryVTT module that shows narration text on every player's screen, for dramatic moments.
+A FoundryVTT module that shows narration text on every player's screen, for dramatic moments. It comes with 14 themes and a GM window for writing and sending narration.
 
 ## Install
 
@@ -10,29 +10,84 @@ Paste this manifest link into Foundry's "Install Module" box (or the Forge Bazaa
 https://raw.githubusercontent.com/OrdeliaLys/Ordy-s-Narration-Helper/main/module.json
 ```
 
-## Use (GM only)
+## The narration window (GM only)
+
+Open it any of these ways:
+
+- type `/narrate` in chat
+- click the feather button in the token tools on the left
+- run a macro: `game.modules.get("ordelia-narration").api.toggle();`
+- assign a hotkey under Configure Controls
+
+In the window you type the narration (each line is shown on its own), pick a theme, and choose the effect, speed, position, size, whether the screen darkens, how long each line stays, and who sees it.
+
+| Button | What it does |
+|---|---|
+| Narrate | Shows the text to the chosen players (Ctrl+Enter also works) |
+| Preview | Shows it on your screen only |
+| Next | Finishes typing the current line, or moves to the next one |
+| Stop | Clears the screen for everyone |
+
+"Wait for Next" keeps each line up until you press Next, instead of timing out.
+
+## Chat commands (GM only)
 
 | Type in chat | What happens |
 |---|---|
-| `/narrate The gates groan open.` | Shows that line on everyone's screen |
+| `/narrate` | Opens the narration window |
+| `/narrate The gates groan open.` | Shows that line with the default look |
 | `/narrate First line. \| Second line.` | Shows the lines one after another |
-| `/narrate` | Opens a box to type into (each line plays separately) |
-| `/narrate-stop` | Clears the screen right away |
+| `/narrate [gauntlight] The light pulses.` | Shows the line in a chosen theme |
+| `/narrate-next` | Same as the Next button |
+| `/narrate-stop` | Same as the Stop button |
 
-From a macro:
+## Themes
+
+Made for Abomination Vaults: `gauntlight`, `vaults`, `emptydeath`, `belcorra`, `otari`
+
+General: `classic`, `parchment`, `cinematic`, `dread`, `arcane`, `divine`, `wild`, `infernal`, `dream`
+
+## Settings
+
+Under Configure Settings. The world settings are the defaults; the narration window can override them for each narration.
+
+- **World (GM):** default theme, position, size, effect, typing speed, darken the screen, seconds per line, wait for Next by default, also post to chat, narrator name in chat
+- **Per person:** reduce motion (simple fade, no animation), and for the GM, don't darken my screen
+
+## Macros
 
 ```js
-game.modules.get("ordelia-narration").api.open();
-game.modules.get("ordelia-narration").api.narrate("Your text here");
-game.modules.get("ordelia-narration").api.stop();
+const narration = game.modules.get("ordelia-narration").api;
+
+narration.toggle();                                  // open or close the window
+narration.narrate("Your text here");                 // default look
+narration.narrate("Your text", { theme: "dread", position: "bottom" });
+narration.narrate("A private vision.", {}, ["USER_ID"]);  // chosen players only
+narration.next();
+narration.stop();
 ```
 
-Position, text size, screen dimming, the typewriter effect and timing are under Configure Settings.
+Options you can pass: `theme`, `position` (top, center, bottom), `textSize` (small, medium, large), `effect` (typewriter, words, fade), `speed` (slow, normal, fast), `dim` (true/false), `holdSeconds`, `manual` (true = wait for Next).
+
+## Files
+
+| File | What it holds |
+|---|---|
+| `scripts/narration.js` | Main file: settings, chat commands, sending and receiving |
+| `scripts/display.js` | Puts the text on screen and animates it |
+| `scripts/panel.js` | The narration window |
+| `scripts/themes.js` | The list of themes |
+| `scripts/options.js` | The list of options and their allowed values |
+| `styles/themes.css` | How each theme looks |
+| `styles/narration.css` | Layout of the on-screen text |
+| `styles/panel.css` | How the narration window looks |
+
+To add a theme, add a line to `scripts/themes.js` and a matching block to `styles/themes.css`.
 
 ## Releasing an update
 
 Foundry installs from `module.zip`, not from the loose files, so an update needs all three steps:
 
-1. Change the files (`scripts/narration.js`, `styles/narration.css`).
+1. Change the files.
 2. Raise `"version"` in `module.json`.
 3. Rebuild `module.zip` so it contains `module.json`, `scripts/` and `styles/` at its top level.
