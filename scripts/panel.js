@@ -10,16 +10,19 @@ const STORAGE_KEY = "ordelia-narration.panel";
 /* config = {
      getDefaults()  -> options from the world settings
      getPlayers()   -> [{ id, name }] of connected players
+     getSaved()     -> [{ id, text, options }] saved narrations
+     setSaved(list) -> stores the saved narrations
+     onHotbar(entry) -> makes a macro-bar button for a saved narration
      onNarrate(text, options, playerIds), onPreview(text, options), onNext(), onStop()
    } */
 export function createPanel(config) {
   let root = null;       // the panel element, built the first time it opens
   let parts = {};        // handy references to pieces of the panel
-  const saved = loadSaved();
-  let options = normalizeOptions({ ...config.getDefaults(), ...saved.options });
+  const remembered = loadRemembered();
+  let options = normalizeOptions({ ...config.getDefaults(), ...remembered.options });
   let audience = [];     // player ids; empty means everyone
-  let draft = saved.draft ?? "";
-  let position = saved.position ?? null;
+  let draft = remembered.draft ?? "";
+  let position = remembered.position ?? null;
 
   /* ---- Opening and closing ---- */
 
@@ -27,8 +30,9 @@ export function createPanel(config) {
     if (!root) build();
     if (!root.isConnected) document.body.append(root);
     root.hidden = false;
-    placePanel();
     refresh();
+    refreshSaved();
+    placePanel();
     parts.text.focus();
   }
 
@@ -63,7 +67,7 @@ export function createPanel(config) {
     parts.text.value = draft;
     parts.text.addEventListener("input", () => {
       draft = parts.text.value;
-      save();
+      remember();
     });
     parts.text.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -71,6 +75,28 @@ export function createPanel(config) {
         send();
       }
     });
+
+    const hint = make("div", {
+      className: "onp-hint",
+      textContent: "Small heading above a line:  Chapter 8 :: The Decaying Gardens"
+    });
+
+    // Action buttons
+    const actions = make("div", { className: "onp-actions" }, [
+      button("Narrate", "onp-primary", send, "Show to players (Ctrl+Enter)"),
+      button("Preview", "onp-action", preview, "Show only on your screen"),
+      button("Next", "onp-action", () => config.onNext(), "Finish typing, or go to the next line"),
+      button("Stop", "onp-action onp-stop", () => config.onStop(), "Clear the screen")
+    ]);
+
+    parts.status = make("div", { className: "onp-status" });
+
+    // Saved narrations: one click sends them
+    const savedHeader = make("div", { className: "onp-row" }, [
+      make("span", { className: "onp-label", textContent: "Saved narrations" }),
+      button("Save current", "onp-save", saveCurrent, "Save the text above, with the look chosen below")
+    ]);
+    parts.saved = make("div", { className: "onp-saved" });
 
     // Theme picker: one button per theme, grouped
     const themeArea = make("div", { className: "onp-themes" });
@@ -112,27 +138,20 @@ export function createPanel(config) {
     // Who sees it
     parts.audience = make("div", { className: "onp-audience" });
 
-    // Action buttons
-    const actions = make("div", { className: "onp-actions" }, [
-      button("Narrate", "onp-primary", send, "Show to players (Ctrl+Enter)"),
-      button("Preview", "onp-action", preview, "Show only on your screen"),
-      button("Next", "onp-action", () => config.onNext(), "Finish typing, or go to the next line"),
-      button("Stop", "onp-action onp-stop", () => config.onStop(), "Clear the screen")
-    ]);
-
-    parts.status = make("div", { className: "onp-status" });
-
     root.append(
       title,
       make("div", { className: "onp-body" }, [
         parts.text,
+        hint,
+        actions,
+        parts.status,
+        savedHeader,
+        parts.saved,
         themeArea,
         optionRows,
         timing,
         make("div", { className: "onp-label", textContent: "Shown to" }),
-        parts.audience,
-        actions,
-        parts.status
+        parts.audience
       ])
     );
 
@@ -158,7 +177,7 @@ export function createPanel(config) {
 
   function setOption(key, value) {
     options = normalizeOptions({ ...options, [key]: value });
-    save();
+    remember();
     refresh();
   }
 
@@ -206,6 +225,85 @@ export function createPanel(config) {
     parts.audience.replaceChildren(everyone, ...chips);
   }
 
+  /* ---- Saved narrations ---- */
+
+  // Draw the list. Each row is: [the narration, click to send] [edit] [macro bar] [remove]
+  function refreshSaved() {
+    if (!root) return;
+    const entries = config.getSaved();
+
+    if (entries.length === 0) {
+      parts.saved.replaceChildren(
+        make("div", { className: "onp-hint", textContent: "Nothing saved yet. Type a line and press Save current." })
+      );
+      return;
+    }
+
+    const rows = entries.map((entry) => {
+      const look = normalizeOptions({ ...config.getDefaults(), ...entry.options });
+      const label = entry.text.replace(/\s*::\s*/g, " · ").replace(/\s*[\n|]\s*/g, " / ");
+
+      const sendButton = button(label, "onp-saved-send", () => {
+        config.onNarrate(entry.text, { ...entry.options }, [...audience]);
+        say(`Sent: ${label}`);
+      }, `Send now: ${entry.text}`);
+      sendButton.dataset.onTheme = look.theme; // colours the button like its theme
+
+      const editButton = button("✎", "onp-mini", () => {
+        parts.text.value = entry.text;
+        draft = entry.text;
+        options = look;
+        remember();
+        refresh();
+        parts.text.focus();
+        say("Loaded into the text box, with its look.");
+      }, "Load into the text box to change it");
+
+      const barButton = button("⊞", "onp-mini", async () => {
+        try {
+          const name = await config.onHotbar(entry);
+          say(`Added to your macro bar: ${name}`);
+        } catch (error) {
+          console.error(error);
+          say("Couldn't add it to the macro bar.");
+        }
+      }, "Add a one-click button to your macro bar");
+
+      const removeButton = button("×", "onp-mini", async () => {
+        const stored = await storeSaved(config.getSaved().filter((other) => other.id !== entry.id));
+        if (stored) say("Removed from saved.");
+      }, "Remove");
+
+      return make("div", { className: "onp-saved-row" }, [sendButton, editButton, barButton, removeButton]);
+    });
+
+    parts.saved.replaceChildren(...rows);
+  }
+
+  async function saveCurrent() {
+    const text = parts.text.value.trim();
+    if (!text) return say("Type the narration to save first.");
+
+    // Saving the same text again replaces the old entry (so you can change its look).
+    const others = config.getSaved().filter((entry) => entry.text !== text);
+    const entry = { id: Math.random().toString(36).slice(2, 10), text, options: { ...options } };
+    const stored = await storeSaved([...others, entry]);
+    if (stored) say("Saved. Click it in the list to send it any time.");
+  }
+
+  async function storeSaved(list) {
+    try {
+      await config.setSaved(list);
+      refreshSaved();
+      placePanel();
+      return true;
+    } catch (error) {
+      console.error(error);
+      say("Couldn't store the saved narrations.");
+      return false;
+    }
+  }
+
   /* ---- Actions ---- */
 
   function send() {
@@ -215,7 +313,7 @@ export function createPanel(config) {
     say(audience.length === 0 ? "Sent to everyone." : `Sent to ${audience.length} chosen player(s).`);
     parts.text.value = "";
     draft = "";
-    save();
+    remember();
     parts.text.focus();
   }
 
@@ -246,7 +344,7 @@ export function createPanel(config) {
       const drop = () => {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", drop);
-        save();
+        remember();
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", drop);
@@ -254,7 +352,7 @@ export function createPanel(config) {
     });
   }
 
-  // Put the panel at its saved spot, nudged back inside the screen if needed.
+  // Put the panel at its remembered spot, nudged back inside the screen if needed.
   function placePanel() {
     const box = root.getBoundingClientRect();
     const width = Math.ceil(box.width) || 380;
@@ -268,7 +366,7 @@ export function createPanel(config) {
 
   /* ---- Remembering choices between sessions (in this browser) ---- */
 
-  function save() {
+  function remember() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ options, draft, position }));
     } catch (error) {
@@ -276,7 +374,7 @@ export function createPanel(config) {
     }
   }
 
-  function loadSaved() {
+  function loadRemembered() {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
     } catch (error) {

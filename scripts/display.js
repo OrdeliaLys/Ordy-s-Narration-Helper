@@ -51,6 +51,19 @@ export function currentLine() {
   return current ? { key: current.key, phase: current.phase } : null;
 }
 
+// "Chapter 8 :: The Decaying Gardens" -> { heading: "Chapter 8", main: "The Decaying Gardens" }
+// A line without :: (or with nothing on one side of it) has no heading.
+export function splitHeading(line) {
+  const text = String(line);
+  const marker = text.indexOf("::");
+  if (marker < 0) return { heading: "", main: text.trim() };
+
+  const before = text.slice(0, marker).trim();
+  const after = text.slice(marker + 2).trim();
+  if (before && after) return { heading: before, main: after };
+  return { heading: "", main: before || after };
+}
+
 // Finish typing the given line at once.
 export function finishReveal(key) {
   if (current?.key === key) current.finishReveal();
@@ -125,7 +138,8 @@ async function playLine(element, item, myRun) {
   element.classList.add("active");
 
   const effect = local.reduceMotion ? "fade" : options.effect;
-  const words = buildLine(textEl, line);
+  const { heading, main } = splitHeading(line);
+  const words = buildLine(textEl, heading, main);
   const letters = words.flat();
   const revealAll = () => letters.forEach((letter) => letter.classList.add("on"));
 
@@ -195,11 +209,20 @@ async function playLine(element, item, myRun) {
 
 // Turn "Two words" into: <span class="on-word"><span class="on-ch">T</span>...</span> ...
 // Returns the letters grouped by word, so they can be revealed one by one.
-function buildLine(textEl, line) {
+// A heading, if there is one, goes on its own smaller row above. It is not
+// typed out: it appears first, then the main text is revealed under it.
+function buildLine(textEl, heading, main) {
   textEl.replaceChildren();
   const words = [];
 
-  for (const piece of line.split(/(\s+)/)) {
+  if (heading) {
+    const headingEl = document.createElement("span");
+    headingEl.className = "on-heading";
+    headingEl.textContent = heading;
+    textEl.append(headingEl);
+  }
+
+  for (const piece of main.split(/(\s+)/)) {
     if (piece === "") continue;
     if (/^\s+$/.test(piece)) {
       textEl.append(" ");

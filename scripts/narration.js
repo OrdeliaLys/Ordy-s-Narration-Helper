@@ -10,6 +10,7 @@
      /narrate The gates groan open.             -> one line, default look
      /narrate First line. | Second line.        -> several lines, one after another
      /narrate [gauntlight] The light pulses.    -> one line in a chosen theme
+     /narrate Chapter 8 :: The Decaying Gardens -> small heading above the line
      /narrate-next                              -> finish typing / go to next line
      /narrate-stop                              -> clear the screen right away
 
@@ -24,7 +25,7 @@
 
 import { THEMES, themeChoices, isTheme } from "./themes.js";
 import { POSITIONS, SIZES, EFFECTS, SPEEDS, FALLBACK, normalizeOptions } from "./options.js";
-import { showNarration, clearNarration, currentLine, finishReveal, advanceLine } from "./display.js";
+import { showNarration, clearNarration, currentLine, finishReveal, advanceLine, splitHeading } from "./display.js";
 import { createPanel } from "./panel.js";
 
 const MODULE_ID = "ordelia-narration";
@@ -236,6 +237,18 @@ function registerSettings() {
     default: "Narrator"
   });
 
+  // The GM's saved narrations (the list in the narration window). This one
+  // has no entry in the settings screen: the window manages it.
+  game.settings.register(MODULE_ID, "saved", {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [
+      { id: "starter-1", text: "The tension dies down...", options: {} },
+      { id: "starter-2", text: "You fail to find further valuables.", options: {} }
+    ]
+  });
+
   // ---- Client settings: each person sets these for their own screen ----
 
   game.settings.register(MODULE_ID, "reduceMotion", {
@@ -307,10 +320,55 @@ function narrate(text, overrides = {}, playerIds = []) {
   game.socket.emit(SOCKET_NAME, message);
 
   if (game.settings.get(MODULE_ID, "postToChat")) {
-    const content = lines.map((line) => `<p><em>${escapeHtml(line)}</em></p>`).join("");
+    const content = lines
+      .map((line) => {
+        const { heading, main } = splitHeading(line);
+        const title = heading ? `<strong>${escapeHtml(heading)}</strong><br>` : "";
+        return `<p>${title}<em>${escapeHtml(main)}</em></p>`;
+      })
+      .join("");
     const alias = game.settings.get(MODULE_ID, "narratorName") || "Narrator";
-    ChatMessage.create({ content, speaker: { alias }, whisper: to ?? [] });
+    CONFIG.ChatMessage.documentClass.create({ content, speaker: { alias }, whisper: to ?? [] });
   }
+}
+
+/* ---- Saved narrations ---- */
+
+// The saved list, tidied so every entry has an id, text and options.
+function getSaved() {
+  const stored = game.settings.get(MODULE_ID, "saved");
+  if (!Array.isArray(stored)) return [];
+  return stored
+    .filter((entry) => entry && typeof entry.text === "string" && entry.text.trim())
+    .map((entry, index) => ({
+      id: String(entry.id ?? `saved-${index}`),
+      text: entry.text,
+      options: entry.options && typeof entry.options === "object" ? { ...entry.options } : {}
+    }));
+}
+
+function setSaved(list) {
+  return game.settings.set(MODULE_ID, "saved", list);
+}
+
+// Make a Foundry macro that sends one saved narration, and put it in the
+// first free slot of the GM's macro bar.
+async function addToHotbar(entry) {
+  const { heading, main } = splitHeading(entry.text);
+  const label = heading ? `${heading}: ${main}` : main;
+  const name = `Narrate: ${label.length > 28 ? `${label.slice(0, 28)}…` : label}`;
+  const command =
+    `game.modules.get("${MODULE_ID}").api.narrate(` +
+    `${JSON.stringify(entry.text)}, ${JSON.stringify(entry.options ?? {})});`;
+
+  const macro = await CONFIG.Macro.documentClass.create({
+    name,
+    type: "script",
+    command,
+    img: "icons/svg/book.svg"
+  });
+  await game.user.assignHotbarMacro(macro);
+  return name;
 }
 
 // Show narration on the GM's own screen only, to try out a look.
@@ -364,6 +422,9 @@ function getPanel() {
       game.users
         .filter((user) => user.active && !user.isGM)
         .map((user) => ({ id: user.id, name: user.name })),
+    getSaved,
+    setSaved,
+    onHotbar: addToHotbar,
     onNarrate: narrate,
     onPreview: preview,
     onNext: next,

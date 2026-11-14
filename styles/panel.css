@@ -305,3 +305,81 @@
   font-size: 12px;
   color: #9a94a8;
 }
+
+/* Hint under the text box */
+#ordelia-narration-panel .onp-hint {
+  font-size: 11px;
+  color: #8d879b;
+  white-space: pre-wrap;
+}
+
+/* Saved narrations */
+#ordelia-narration-panel .onp-save {
+  margin-left: auto;
+  padding: 3px 8px;
+  font-size: 12px;
+  background: #26242c;
+  color: #cfc9d8;
+  border: 1px solid #45414e;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-save:hover,
+#ordelia-narration-panel .onp-mini:hover {
+  border-color: #7d7690;
+  color: #fff;
+}
+
+#ordelia-narration-panel .onp-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 124px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+#ordelia-narration-panel .onp-saved-row {
+  display: flex;
+  gap: 4px;
+}
+
+/* The narration itself: click to send. Coloured like its theme. */
+#ordelia-narration-panel .onp-saved-send {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid #45414e;
+  border-radius: 5px;
+  cursor: pointer;
+
+  background: var(--on-chip);
+  color: var(--on-chip-color);
+  font-family: var(--on-font);
+  font-size: 14px;
+  text-shadow: 0 0 6px var(--on-glow);
+}
+
+#ordelia-narration-panel .onp-saved-send:hover {
+  border-color: #f0ece4;
+}
+
+#ordelia-narration-panel .onp-mini {
+  flex: 0 0 26px;
+  text-align: center;
+  background: #26242c;
+  color: #b8b2c4;
+  border: 1px solid #45414e;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#ordelia-narration-panel .onp-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

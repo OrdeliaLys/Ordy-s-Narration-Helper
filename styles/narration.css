@@ -74,6 +74,17 @@
   opacity: 1;
 }
 
+/* A small heading above the main text, written as "Chapter 8 :: Title". */
+#ordelia-narration .on-heading {
+  display: block;
+  margin-bottom: 0.35em;
+  font-size: 0.5em;
+  font-style: normal;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
 /* With "Darken screen" off, a soft dark patch behind the text keeps it
    readable over a bright map. (Parchment brings its own background.) */
 #ordelia-narration:not(.dim):not([data-on-theme="parchment"]) .on-text {

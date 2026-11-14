@@ -30,6 +30,29 @@ In the window you type the narration (each line is shown on its own), pick a the
 
 "Wait for Next" keeps each line up until you press Next, instead of timing out.
 
+### Headings
+
+Put `::` between a small heading and the main text to make a title card:
+
+```
+Chapter 8 :: The Decaying Gardens
+```
+
+"Chapter 8" appears in small letters above "The Decaying Gardens". This works everywhere: the window, `/narrate`, saved narrations and macros.
+
+### Saved narrations
+
+Type a narration, choose its look, and press **Save current**. It joins the Saved narrations list and keeps the look it was saved with. Each row has four buttons:
+
+| Button | What it does |
+|---|---|
+| The narration itself | Sends it right away |
+| ✎ | Loads it into the text box so you can change it (saving the same text again replaces it) |
+| ⊞ | Adds a one-click button for it to your macro bar |
+| × | Removes it |
+
+Saved narrations are stored in the world, so they are there on any computer you GM from.
+
 ## Chat commands (GM only)
 
 | Type in chat | What happens |
@@ -38,6 +61,7 @@ In the window you type the narration (each line is shown on its own), pick a the
 | `/narrate The gates groan open.` | Shows that line with the default look |
 | `/narrate First line. \| Second line.` | Shows the lines one after another |
 | `/narrate [gauntlight] The light pulses.` | Shows the line in a chosen theme |
+| `/narrate Chapter 8 :: The Decaying Gardens` | Shows a small heading above the line |
 | `/narrate-next` | Same as the Next button |
 | `/narrate-stop` | Same as the Stop button |
 

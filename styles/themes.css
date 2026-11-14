@@ -107,6 +107,11 @@
   animation: on-hollow 7s ease-in-out infinite;
 }
 
+#ordelia-narration[data-on-theme="emptydeath"] .on-heading {
+  -webkit-text-stroke: 0;
+  color: rgba(218, 208, 255, 0.9);
+}
+
 #ordelia-narration[data-on-theme="emptydeath"].dim::before {
   content: "";
   position: absolute;
