@@ -69,7 +69,7 @@ Saved narrations are stored in the world, so they are there on any computer you 
 
 Made for Abomination Vaults: `gauntlight`, `vaults`, `emptydeath`, `belcorra`, `otari`, `overgrown`, `blighted`
 
-Overgrown grows vines over the text: they climb beside the letters, run across their tops and sprout leaves. Blighted is the dying version: black thorned stems with a violet pulse, hanging roots, dead leaves that drop off, and text that slowly turns a sickly green. Everyone sees the same vines for the same text.
+Overgrown grows vines over the text: they climb beside the letters, run across their tops and sprout leaves. Blighted is the dying version: black-green thorned stems with a sickly green pulse, hanging roots, rotting leaves that drop off, and text that slowly turns a sickly green. Everyone sees the same vines for the same text.
 
 General: `classic`, `parchment`, `cinematic`, `dread`, `arcane`, `divine`, `wild`, `infernal`, `dream`
 

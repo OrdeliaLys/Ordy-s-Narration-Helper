@@ -26,7 +26,7 @@ const LOOKS = {
   },
   // Dying, thorny growth.
   blight: {
-    leafColours: ["#3a2a16", "#4a3418", "#2e2418", "#40203a", "#5a1f1f", "#4f4420", "#261a14"],
+    leafColours: ["#4a4a1c", "#5c5a24", "#3a3c16", "#6b6426", "#2c3312", "#54421c", "#3e4a1a"],
     leafShape: "M0,0 C2,-4.5 6,-6 8.5,-3 L13,0 L9.5,1.8 C7,5 2.5,4.5 0,0 Z",
     leafSpacing: 1.7,
     thorns: true,
