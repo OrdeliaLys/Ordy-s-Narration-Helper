@@ -2,6 +2,8 @@
    players) and knows nothing about Foundry: it only builds and animates HTML. */
 
 import { normalizeOptions } from "./options.js";
+import { themeDecoration } from "./themes.js";
+import { growVines } from "./vines.js";
 
 // Timing, in milliseconds. Change these to taste.
 const FADE_MS = 800;           // fade in/out of a whole line
@@ -142,6 +144,18 @@ async function playLine(element, item, myRun) {
   const words = buildLine(textEl, heading, main);
   const letters = words.flat();
   const revealAll = () => letters.forEach((letter) => letter.classList.add("on"));
+
+  // Some themes draw something extra around the text.
+  if (themeDecoration(options.theme) === "vines") {
+    const typingTime =
+      effect === "typewriter" ? letters.length * CHAR_MS[options.speed] * 1.3
+      : effect === "words" ? words.length * WORD_MS[options.speed] * 1.2
+      : 2600;
+    growVines(textEl, {
+      duration: Math.min(Math.max(typingTime, 3000), 7000),
+      instant: Boolean(local.reduceMotion)
+    });
+  }
 
   if (effect === "fade") {
     // Whole line fades in together.

@@ -1,6 +1,7 @@
 /* The list of narration themes.
    Each theme's look lives in styles/themes.css under [data-on-theme="<id>"].
-   To add a theme: add a line here, then add a matching block in themes.css. */
+   To add a theme: add a line here, then add a matching block in themes.css.
+   "decoration" switches on something drawn by a script (see vines.js). */
 
 export const THEMES = [
   // Made for Abomination Vaults
@@ -9,6 +10,7 @@ export const THEMES = [
   { id: "emptydeath", label: "Empty Death", group: "Abomination Vaults" },
   { id: "belcorra", label: "Belcorra", group: "Abomination Vaults" },
   { id: "otari", label: "Otari", group: "Abomination Vaults" },
+  { id: "overgrown", label: "Overgrown", group: "Abomination Vaults", decoration: "vines" },
 
   // General use
   { id: "classic", label: "Classic", group: "General" },
@@ -24,6 +26,11 @@ export const THEMES = [
 
 export function isTheme(id) {
   return THEMES.some((theme) => theme.id === id);
+}
+
+// Which scripted decoration a theme uses, if any (currently only "vines").
+export function themeDecoration(id) {
+  return THEMES.find((theme) => theme.id === id)?.decoration ?? null;
 }
 
 // For the settings dropdown: { gauntlight: "Abomination Vaults: Gauntlight", ... }

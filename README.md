@@ -1,6 +1,6 @@
 # Ordy's Narration Helper
 
-A FoundryVTT module that shows narration text on every player's screen, for dramatic moments. It comes with 14 themes and a GM window for writing and sending narration.
+A FoundryVTT module that shows narration text on every player's screen, for dramatic moments. It comes with 15 themes and a GM window for writing and sending narration.
 
 ## Install
 
@@ -67,7 +67,9 @@ Saved narrations are stored in the world, so they are there on any computer you 
 
 ## Themes
 
-Made for Abomination Vaults: `gauntlight`, `vaults`, `emptydeath`, `belcorra`, `otari`
+Made for Abomination Vaults: `gauntlight`, `vaults`, `emptydeath`, `belcorra`, `otari`, `overgrown`
+
+Overgrown grows vines over the text: they climb beside the letters, run across their tops and sprout leaves. Everyone sees the same vines for the same text.
 
 General: `classic`, `parchment`, `cinematic`, `dread`, `arcane`, `divine`, `wild`, `infernal`, `dream`
 
@@ -101,6 +103,7 @@ Options you can pass: `theme`, `position` (top, center, bottom), `textSize` (sma
 | `scripts/display.js` | Puts the text on screen and animates it |
 | `scripts/panel.js` | The narration window |
 | `scripts/themes.js` | The list of themes |
+| `scripts/vines.js` | Draws the growing vines for the Overgrown theme |
 | `scripts/options.js` | The list of options and their allowed values |
 | `styles/themes.css` | How each theme looks |
 | `styles/narration.css` | Layout of the on-screen text |

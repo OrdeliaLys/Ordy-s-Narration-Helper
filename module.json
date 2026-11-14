@@ -2,7 +2,7 @@
   "id": "ordelia-narration",
   "title": "Ordy's Narration Helper",
   "description": "Shows dramatic narration text on every player's screen, with themes and a GM narration window. Type /narrate to open it.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "authors": [
     {
       "name": "Ordelia"
