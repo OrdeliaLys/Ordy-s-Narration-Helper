@@ -1,0 +1,76 @@
+/* Ordy's Narration Helper - how the on-screen text looks.
+   Colours, font and sizes are all safe to change. */
+
+/* The full-screen layer. Invisible until the script adds the "active" class. */
+#ordelia-narration {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;            /* above the map, sheets and sidebar */
+  pointer-events: none;      /* clicks pass straight through to the game */
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 10vh 10vw;
+
+  opacity: 0;
+  transition: opacity var(--on-fade, 800ms) ease;
+
+  --on-font-size: clamp(24px, 3vw, 44px);
+}
+
+#ordelia-narration.active {
+  opacity: 1;
+}
+
+/* "Darken the screen" setting */
+#ordelia-narration.dim {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.9));
+}
+
+/* "Text position" setting */
+#ordelia-narration[data-position="top"] {
+  align-items: flex-start;
+}
+
+#ordelia-narration[data-position="bottom"] {
+  align-items: flex-end;
+}
+
+/* "Text size" setting */
+#ordelia-narration[data-size="small"] {
+  --on-font-size: clamp(18px, 2.2vw, 32px);
+}
+
+#ordelia-narration[data-size="large"] {
+  --on-font-size: clamp(30px, 4vw, 60px);
+}
+
+/* The narration text itself */
+#ordelia-narration .on-text {
+  margin: 0;
+  max-width: 28em;
+  text-align: center;
+  white-space: pre-wrap;
+
+  font-family: "Amiri", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: var(--on-font-size);
+  font-style: italic;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: #f3ead7;
+  text-shadow: 0 0 6px #000, 0 2px 14px rgba(0, 0, 0, 0.9);
+
+  opacity: 0;
+  transition: opacity var(--on-fade, 800ms) ease;
+}
+
+#ordelia-narration .on-text.visible {
+  opacity: 1;
+}
+
+/* Typewriter: letters not yet "typed" take up space but can't be seen. */
+#ordelia-narration .on-hidden {
+  visibility: hidden;
+}

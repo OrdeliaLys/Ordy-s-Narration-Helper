@@ -1,0 +1,17 @@
+{
+  "id": "ordelia-narration",
+  "title": "Ordy's Narration Helper",
+  "description": "Shows dramatic narration text on every player's screen. GM types /narrate followed by the text.",
+  "version": "1.0.1",
+  "authors": [{ "name": "Ordelia" }],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "14"
+  },
+  "esmodules": ["scripts/narration.js"],
+  "styles": ["styles/narration.css"],
+  "socket": true,
+  "url": "https://github.com/OrdeliaLys/Ordy-s-Narration-Helper",
+  "manifest": "https://raw.githubusercontent.com/OrdeliaLys/Ordy-s-Narration-Helper/main/module.json",
+  "download": "https://raw.githubusercontent.com/OrdeliaLys/Ordy-s-Narration-Helper/main/module.zip"
+}
